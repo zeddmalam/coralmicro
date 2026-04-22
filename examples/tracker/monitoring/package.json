@@ -1,0 +1,13 @@
+{
+  "name": "monitoring",
+  "private": true,
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "bun run --parallel dev:api dev:web",
+    "dev:web": "bun run --cwd apps/web dev",
+    "dev:api": "cd apps/api && go run .",
+    "install:all": "bun install"
+  }
+}

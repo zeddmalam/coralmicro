@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Coral camera</title>
+  </head>
+  <body>
+    <p>UART proxy camera (polls <code>/frame</code> on the device)</p>
+    <img id="f" style="max-width: 100%; height: auto" alt="frame" />
+    <script>
+      function tick() {
+        var el = document.getElementById("f");
+        el.src = "/frame?" + Date.now();
+      }
+      setInterval(tick, 500);
+      tick();
+    </script>
+  </body>
+</html>

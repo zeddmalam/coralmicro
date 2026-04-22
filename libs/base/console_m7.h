@@ -82,7 +82,7 @@ class ConsoleM7 {
       kM4ConsoleBufferBytes + sizeof(IpcStreamBuffer);
   static uint8_t m4_console_buffer_storage_[kM4ConsoleBufferSize];
 
-  static constexpr size_t kRxBufferSize = 64;
+  static constexpr size_t kRxBufferSize = 2048;
   std::array<uint8_t, kRxBufferSize> rx_buffer_;
 
   static constexpr size_t kEmergencyBufferSize = 256;
