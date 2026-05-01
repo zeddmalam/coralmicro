@@ -1,0 +1,33 @@
+{
+  "projectName": "web",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "npm",
+  "includeExamples": true,
+  "tailwind": true,
+  "addOnOptions": {
+    "drizzle": {
+      "database": "postgresql"
+    }
+  },
+  "envVarValues": {},
+  "git": false,
+  "install": true,
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "biome",
+    "nitro",
+    "drizzle",
+    "paraglide",
+    "shadcn",
+    "t3env",
+    "tRPC",
+    "better-auth",
+    "tanstack-query",
+    "ai",
+    "mcp",
+    "store"
+  ]
+}

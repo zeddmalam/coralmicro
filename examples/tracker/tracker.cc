@@ -80,6 +80,13 @@ STATIC_TENSOR_ARENA_IN_SDRAM(tensor_arena, kTensorArenaSize);
 constexpr char kModelPath[] =
     "/models/posenet_mobilenet_v1_075_324_324_16_quant_decoder_edgetpu.tflite";
 constexpr char kTestInputPath[] = "/models/posenet_test_input_324.bin";
+// Auto white-balance can over-correct in some scenes and produce unstable casts.
+// Keep this explicit so color behavior is predictable and easy to tune.
+constexpr bool kAutoWhiteBalance = false;
+// When true, serial JSON sends a tiny fixed grey placeholder (1×1 WebP as
+// base64, ~60 chars) instead of a camera frame. Monitoring stack upscales to
+// 324×324 for pose overlay.
+constexpr bool kNoImage = true;
 
 std::string Base64Encode(const std::vector<uint8_t>& data) {
   static const char kTable[] =
@@ -100,6 +107,22 @@ std::string Base64Encode(const std::vector<uint8_t>& data) {
   return out;
 }
 
+void WriteBase64ToStdout(const char* s, size_t n) {
+  constexpr size_t kChunk = 512;
+  for (size_t i = 0; i < n; i += kChunk) {
+    size_t chunk = n - i;
+    if (chunk > kChunk) {
+      chunk = kChunk;
+    }
+    (void)write(STDOUT_FILENO, s + i, chunk);
+  }
+  (void)fflush(stdout);
+}
+
+void WriteBase64ToStdout(const std::string& b64) {
+  WriteBase64ToStdout(b64.c_str(), b64.size());
+}
+
 void HandleFrame() {
   std::vector<uint8_t> rgb(CameraTask::kWidth * CameraTask::kHeight *
                            CameraFormatBpp(CameraFormat::kRgb));
@@ -111,7 +134,7 @@ void HandleFrame() {
     CameraTask::kHeight,
       /*preserve_ratio=*/false,
       rgb.data(),
-      /*white_balance=*/true,
+      /*white_balance=*/kAutoWhiteBalance,
   };
   if (!CameraTask::GetSingleton()->GetFrame({fmt})) {
     printf("HandleFrame: GetFrame failed\r\n");
@@ -123,20 +146,16 @@ void HandleFrame() {
     printf("HandleFrame: JpegCompressRgb failed\r\n");
     return;
   }
-  std::string b64 = Base64Encode(jpeg);
-  // Base64 via printf is unreliable (nano printf limits). Payload uses write()
-  // → same _write/ConsoleM7 path as stdout, without formatting caps.
-  const char* s = b64.c_str();
-  const size_t n = b64.size();
-  constexpr size_t kChunk = 512;
-  for (size_t i = 0; i < n; i += kChunk) {
-    size_t chunk = n - i;
-    if (chunk > kChunk) {
-      chunk = kChunk;
-    }
-    (void)write(STDOUT_FILENO, s + i, chunk);
-  }
-  (void)fflush(stdout);
+  WriteBase64ToStdout(Base64Encode(jpeg));
+}
+
+// 1×1 mid-grey WebP, base64-encoded (44 bytes raw).
+constexpr char kNoImagePlaceholderWebPBase64[] =
+    "UklGRiQAAABXRUJQVlA4IBgAAABQAQCdASoBAAEADMDOJaQABHQAAAAAAAA=";
+
+void EmitNoImagePlaceholderBase64() {
+  WriteBase64ToStdout(kNoImagePlaceholderWebPBase64,
+                      sizeof(kNoImagePlaceholderWebPBase64) - 1);
 }
 
 void Main() {
@@ -213,7 +232,8 @@ void Main() {
         model_width,
         model_height,
         false,
-        tflite::GetTensorData<uint8_t>(posenet_input)};
+        tflite::GetTensorData<uint8_t>(posenet_input),
+        kAutoWhiteBalance};
     if (!CameraTask::GetSingleton()->GetFrame({fmt})) {
       TF_LITE_REPORT_ERROR(&error_reporter, "Failed to get image from camera.");
       break;
@@ -226,15 +246,40 @@ void Main() {
                                                0.5);
     printf("{\"poses\":[");
 
-    /*for (const auto& pose : output) {
-      PersonLocation location = EstimatePersonLocation(pose, model_width, model_height);
-      printf("{angle_deg:%f, distance_m:%f}\n", location.angle_deg, location.distance_m);
-    }*/
+    bool first_pose = true;
+    (void)fflush(stdout);
+    for (const auto& pose : output) {
+      if (!first_pose) {
+        printf(",");
+      }
+      first_pose = false;
+
+      printf("{\"score\":%.4f,\"keypoints\":[", pose.score);
+      (void)fflush(stdout);
+
+      for (int j = 0; j < tensorflow::kKeypoints; ++j) {
+        if (j > 0) {
+          printf(",");
+        }
+        printf(
+            "{\"name\":\"%s\",\"x\":%.4f,\"y\":%.4f,\"score\":%.4f}",
+            tensorflow::KeypointTypes[j], pose.keypoints[j].x,
+            pose.keypoints[j].y, pose.keypoints[j].score);
+        (void)fflush(stdout);
+      }
+      printf("]}");
+      (void)fflush(stdout);
+      //printf("{angle_deg:%f, distance_m:%f}\n", location.angle_deg, location.distance_m);
+    }
     printf("],\"imageData\":\"");
     // write() bypasses the stdio buffer; without fflush, base64 can appear on
     // the wire before this printf's tail ("imageData:\"") is flushed.
     (void)fflush(stdout);
-    HandleFrame();
+    if (kNoImage) {
+      EmitNoImagePlaceholderBase64();
+    } else {
+      HandleFrame();
+    }
 //    vTaskDelay(pdMS_TO_TICKS(500));
     printf("\"");
     printf("}\n\n");

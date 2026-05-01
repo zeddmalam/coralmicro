@@ -1,0 +1,3 @@
+{
+  "extends": "@monitoring/config/tsconfig.base.json"
+}

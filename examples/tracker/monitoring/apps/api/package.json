@@ -1,0 +1,35 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "serve": "vite preview",
+    "dev": "bun --env-file=../../.env.local vite dev",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@monitoring/api": "workspace:*",
+    "@monitoring/auth": "workspace:*",
+    "@monitoring/env": "workspace:*",
+    "@polar-sh/better-auth": "catalog:",
+    "@tanstack/react-router": "^1.168.22",
+    "@tanstack/react-start": "^1.167.41",
+    "@trpc/server": "catalog:",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "serialport": "13.0.0",
+    "sharp": "^0.34.5",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@monitoring/config": "workspace:*",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "catalog:",
+    "vite": "^8.0.8"
+  }
+}

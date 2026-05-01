@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "nitro": "^3.0.260415-beta",
+    "serialport": "^13.0.0"
+  }
+}
